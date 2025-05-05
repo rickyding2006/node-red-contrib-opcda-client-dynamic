@@ -4,10 +4,15 @@ This node can be used in order to read and write to OPC DA servers.
 
 This node is based on emrebekar/node-red-contrib-opcda-client, modified opcda-read.js.
 
-- only valid tags is read for opcda-read when msg.payload tags is vaild
+- only valid tags is read for opcda-read when msg.payload tags is vaild.
+
 msg.payload = {
    tags: ["dev1.wendu","dev1.yali"]   
 };
+
+![opcda-tags](https://github.com/rickyding2006/node-red-contrib-opcda-client-dynamic/blob/main/images/payload-tags)
+
+
 
 -  for normal read( no payload tags ), only value changed tags will ouput when data change is checked. For example,devl.wendu and devl.yali were set,only devl.wendu value changed, opcda-read will only output devl .wendu
 
