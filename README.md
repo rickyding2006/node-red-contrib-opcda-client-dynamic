@@ -10,7 +10,7 @@ msg.payload = {
    tags: ["dev1.wendu","dev1.yali"]   
 };
 
-![opcda-tags](https://github.com/rickyding2006/node-red-contrib-opcda-client-dynamic/blob/main/images/payload-tags)
+![opcda-tags](https://github.com/rickyding2006/node-red-contrib-opcda-client-dynamic/blob/main/images/payload-tags.jpg)
 
 
 
