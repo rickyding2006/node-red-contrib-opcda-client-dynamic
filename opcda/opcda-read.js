@@ -1,3 +1,8 @@
+/**
+ * Modified from [emrebekar/node-red-contrib-opcda-client](https://github.com/emrebekar/node-red-contrib-opcda-client)
+ * Copyright (c) 2025 rickyding2006
+ */
+
 module.exports = function(RED) {
     const opcda = require('node-opc-da');
     const { OPCServer } = opcda;
