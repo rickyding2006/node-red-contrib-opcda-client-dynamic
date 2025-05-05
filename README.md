@@ -1,12 +1,16 @@
 # node-red-contrib-opcda-client
 
 This node can be used in order to read and write to OPC DA servers.
+
 This node is based on emrebekar/node-red-contrib-opcda-client, modified opcda-read.js,
+
 1)only valid tags is read for opcda-read when msg.payload tags is vaild
 msg.payload = {
    tags: ["dev1.wendu","dev1.yali"]   
 };
+
 2) for normal read( no payload tags ), only value changed tags will ouput when data change is checked. For example,devl.wendu and devl.yali were set,only devl.wendu value changed, opcda-read will only output devl .wendu
+
 3) for dynamic read ( payload tags valid ), data change check is useless , all payload tags will output.
 
 - opcda-server
@@ -77,10 +81,10 @@ set msg.payload parameter with the following;
 #### Screenshots
 
 ##### opcda-server
-![opcda-server](https://raw.githubusercontent.com/emrebekar/node-red-contrib-opcda-client/master/images/opcda_server.png)
+![opcda-server](https://github.com/rickyding2006/node-red-contrib-opcda-client-dynamic/blob/main/images/opcda_server.png)
 
 ##### opcda-read
-![opcda-read](https://raw.githubusercontent.com/emrebekar/node-red-contrib-opcda-client/master/images/opcda_read.png)
+![opcda-read](https://github.com/rickyding2006/node-red-contrib-opcda-client-dynamic/blob/main/images/opcda_read.png)
 
 ##### opcda-write
-![opcda-write](https://raw.githubusercontent.com/emrebekar/node-red-contrib-opcda-client/master/images/opcda_write.png)
+![opcda-write](https://github.com/rickyding2006/node-red-contrib-opcda-client-dynamic/blob/main/images/opcda_write.png)
