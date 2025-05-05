@@ -1,0 +1,45 @@
+{
+  "name": "node-red-contrib-opcda-client-dynamic",
+  "version": "0.1.0",
+  "description": "Node-RED OPC DA dynamic Reading and Writing Node",
+  "node-red": {
+    "nodes": {
+      "opc-read": "opcda/opcda-read.js",
+      "opc-write": "opcda/opcda-write.js",
+      "opc-server": "opcda/opcda-server.js"
+    },
+    "keywords": [
+      "opcda",
+      "plc",
+      "industry4.0",
+      "dcom",
+      "node-red",
+      "opc-da",
+      "automation",
+      "i4.0"
+    ]
+  },
+  "keywords": [
+    "opcda",
+    "plc",
+    "industry4.0",
+    "dcom",
+    "opc-da",
+    "node-red",
+    "automation",
+    "i4.0"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rickyding2006/node-red-contrib-opcda-client-dynamic.git"
+  },
+  "author": "rickyding2006",
+  "bugs": {
+    "url": "https://github.com/rickyding2006/node-red-contrib-opcda-client-dynamic/issues"
+  },
+  "homepage": "https://github.com/rickyding2006/node-red-contrib-opcda-client-dynamic/blob/master/README.md",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "node-opc-da": "^1.0.6"
+  }
+}
