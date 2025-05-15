@@ -142,7 +142,8 @@ module.exports = function(RED) {
                             const item = itemsList[i];
 
                             if (addedItem[0] !== 0) {
-                                node.warn(`Error adding item '${item.itemID}': ${errorCode[addedItem[0]]}`);
+                                let errorCodeHex = (new Uint32Array([addedItem[0]]))[0].toString(16).toUpperCase();                    
+                                node.warn(`Error adding item：'${item.itemID}'，err_code: 0x${errorCodeHex}`);
                             } else {
                                 serverHandles.push(addedItem[1].serverHandle);
                                 clientHandles[item.clientHandle] = item.itemID;
@@ -274,81 +275,139 @@ module.exports = function(RED) {
     });
 }
 
-        node.readTags = async function (tags, cache) {
-            var dataSource = cache ? opcda.constants.opc.dataSource.CACHE : opcda.constants.opc.dataSource.DEVICE;
+node.readTags = async function (tags, cache) {
+    var dataSource = cache ? opcda.constants.opc.dataSource.CACHE : opcda.constants.opc.dataSource.DEVICE;
 
-            node.isReading = true;
-            try {
-                let clientHandle = 1;
-                var itemsList = tags.map(tag => {
-                    if (typeof tag !== 'string') {
-                        throw new Error(`Invalid tag ID: ${tag}. Tag IDs must be strings.`);
-                    }
-                    return { itemID: tag, clientHandle: clientHandle++ };
-                });
-
-                var addedItems = await node.opcItemMgr.add(itemsList);
-
-                var handlesToRemove = [];
-                var valueSetsPromises = [];
-
-                for (let i = 0; i < addedItems.length; i++) {
-                    const addedItem = addedItems[i];
-                    const item = itemsList[i];
-
-                    if (addedItem[0] !== 0) {
-                        node.warn(`Error adding item '${item.itemID}': ${errorCode[addedItem[0]]}`);
-                    } else {
-                        handlesToRemove.push(addedItem[1].serverHandle);
-                        valueSetsPromises.push(node.opcSyncIO.read(dataSource, [addedItem[1].serverHandle]));
-                    }
+    node.isReading = true;   
+    try {
+        if (!node.tagCache) {
+            node.tagCache = new Map(); 
+        }
+        
+        var valueSetsPromises = [];
+        var newAddedTags = [];   
+        
+        for (const tag of tags) {
+            const serverHandle = node.tagCache.get(tag);
+            
+            if (serverHandle !== undefined) {
+                
+                valueSetsPromises.push(
+                    node.opcSyncIO.read(dataSource, [serverHandle])
+                        .then(valueSet => {
+     //                       node.log(`cache read: ${tag} (serverHandle: ${serverHandle})`);
+                            return valueSet;
+                        })
+                        .catch(err => {
+                            node.warn(`cache invaild，delete: ${tag} (serverHandle: ${serverHandle})`);
+                            node.tagCache.delete(tag);
+                            throw err; 
+                        })
+                );
+            } else {
+                const clientHandle = Date.now(); 
+                
+                const addedItems = await node.opcItemMgr.add([{ itemID: tag, clientHandle }]);
+                const [errorCode, handle] = addedItems[0];
+                
+                if (errorCode !== 0) {             
+                    let errorCodeHex = (new Uint32Array([errorCode]))[0].toString(16).toUpperCase();                    
+                    node.warn(`Error adding item：'${tag}', err_code: 0x${errorCodeHex}`);
+                } else {
+                    const serverHandle = handle.serverHandle;
+                    node.tagCache.set(tag, serverHandle); 
+                    
+                    newAddedTags.push(tag);
+                    valueSetsPromises.push(
+                        node.opcSyncIO.read(dataSource, [serverHandle])
+                            .then(valueSet => {
+                       //         node.log(`new add: ${tag} (serverHandle: ${serverHandle})`);
+                                return valueSet;
+                            })
+                    );
                 }
-
-                var results = await Promise.all(valueSetsPromises);
-
-                var datas = [];
-
-                for (let i = 0; i < results.length; i++) {
-                    var valueSet = results[i][0];
-                    var quality;
-
-                    if (valueSet.quality >= 0 && valueSet.quality < 64) {
-                        quality = "BAD";
-                    } else if (valueSet.quality >= 64 && valueSet.quality < 192) {
-                        quality = "UNCERTAIN";
-                    } else if (valueSet.quality >= 192 && valueSet.quality <= 219) {
-                        quality = "GOOD";
-                    } else {
-                        quality = "UNKNOWN";
-                    }
-
-                    var data = {
-                        itemID: itemsList[i].itemID,
-                        errorCode: valueSet.errorCode,
-                        quality: quality,
-                        timestamp: valueSet.timestamp,
-                        value: valueSet.value,
-                    }
-
-                    datas.push(data);
-                }
-
-                var msg = { payload: datas };
-                node.send(msg);
-
-                // Remove the items after reading to clean up
-                await node.opcItemMgr.remove(handlesToRemove);
-            } catch (e) {
-                node.error("opcda-error", e.message);
-                node.updateStatus("error");
-                node.reconnect();
-            } finally {
-                node.isReading = false;
             }
         }
+              
+        // read all data from opcda server
+        var results = await Promise.all(valueSetsPromises);
+        
+        // process result
+        var datas = [];
+        let isGood = true;
+
+        for (let i = 0; i < tags.length; i++) {
+            const tag = tags[i];
+            const valueSet = results[i];
+            
+            if (valueSet && valueSet[0]) {
+                var quality;
+                const qualityValue = valueSet[0].quality;
+                
+                if (qualityValue >= 0 && qualityValue < 64) {
+                    quality = "BAD";
+                    isGood = false;
+                } else if (qualityValue >= 64 && qualityValue < 192) {
+                    quality = "UNCERTAIN";
+                    isGood = false;
+                } else if (qualityValue >= 192 && qualityValue <= 219) {
+                    quality = "GOOD";
+                } else {
+                    quality = "UNKNOWN";
+                    isGood = false;
+                }
+
+                datas.push({
+                    itemID: tag,
+                    errorCode: valueSet[0].errorCode,
+                    quality: quality,
+                    timestamp: valueSet[0].timestamp,
+                    value: valueSet[0].value,
+                });
+            } else {
+  //              node.warn(`read ${tag} null`);
+                isGood = false;
+            }
+        }
+        
+        if (isGood) {
+            node.updateStatus('goodquality');
+        } else {
+            node.updateStatus('badquality');
+        }
+        
+        // send result
+        var msg = { payload: datas };
+        node.send(msg);
+//        node.log(`cache size: ${node.tagCache.size}`);
+        
+    } catch (e) {
+        node.error("opcda-error: " + e.message);
+        node.updateStatus("error");
+        
+        // delete unused tags
+        tags.forEach(tag => {
+            if (node.tagCache.get(tag)) {
+ //               node.log(`delete invalid tag: ${tag}`);
+                node.tagCache.delete(tag);
+            }
+        });
+        
+        node.reconnect(); 
+    } finally {
+        node.isReading = false;
+    }
+};
+
 
         node.isReconnecting = false;
-        node.reconnect = async function () {
+        node.reconnect = async function () {           
+
+          if (!node.tagCache) {
+              node.tagCache = new Map();
+           }
+          node.tagCache.clear();  //clear all tag cache when reconnect
+
             try {
                 if (!node.isReconnecting) {
                     node.isReconnecting = true;
